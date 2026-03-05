@@ -2,7 +2,7 @@
 Official implementation of NexOP
 
 ## Official Implementation
-**Paper Title:** [NexOP: Joint Optimization of NEX-Aware k-space Sampling and Image Reconstruction for Low-Field MRI]
+**Paper Title:** NexOP: Joint Optimization of NEX-Aware k-space Sampling and Image Reconstruction for Low-Field MRI
 
 **Authors:** Tal Oved, Efrat Shimron
 
