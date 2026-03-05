@@ -1,0 +1,25 @@
+# Standard Library / CLI / OS
+argparse
+glob2
+logging
+
+# Core Data and Math
+numpy>=1.21.0
+h5py>=3.6.0
+scipy>=1.7.0
+scikit-image>=0.19.0
+
+# Deep Learning Frameworks
+torch>=2.0.0
+torchvision>=0.15.0
+torchmetrics>=1.0.0
+
+# Medical Imaging Specifics
+fastmri
+sigpy
+
+# Visualization, Evaluation & Utilities
+matplotlib>=3.5.0
+pillow>=9.0.0
+piq>=0.7.0
+lpips>=0.1.4
