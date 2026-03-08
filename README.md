@@ -13,16 +13,16 @@ The repository is organized as follows:
 NexOP
 ├── core_models
 │   ├── M4RawData               # Dataset files
-│   ├── unet                    # U-Net architecture components
-│   └── utils                   # Helper functions 
-├── Compare_M4Raw.py            # Comparison script for different reconstruction models
-├── M4Raw_Trainer.py            # Main training script
-├── M4RawDataset.py             # Data loader implementation
-├── modl.py                     # unrolled model architecture implementation
-├── Multi_To_Single.py          # ESPIRiT-based data preprocessing
-├── NexOP_model.py              # Core NexOP network architecture
-├── subsample_fastmri.py        
-├── Test_Statistics.py          # Script for calculating evaluation metrics
+│   ├── unet                    # U-Net components
+│   ├── utils                   # Helper functions 
+│   ├── Compare_M4Raw.py        # Comparison script for different reconstruction models
+│   ├── M4Raw_Trainer.py        # Main training script
+│   ├── M4RawDataset.py         # Data loader implementation
+│   ├── modl.py                 # Unrolled model architecture implementation
+│   ├── Multi_To_Single.py      # ESPIRiT-based data preprocessing
+│   ├── NexOP_model.py          # Core NexOP network architecture
+│   ├── subsample_fastmri.py        
+│   └── Test_Statistics.py      # Calculating evaluation metrics
 ├── LICENSE
 └── README.md
 ```
