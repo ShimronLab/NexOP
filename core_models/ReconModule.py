@@ -178,7 +178,7 @@ class data_consistency(nn.Module):
         return rec
 
 #model =======================    
-class MoDL(nn.Module):
+class ReconModule(nn.Module):
     def __init__(self, n_layers, k_iters, input_model='Constant'):
         """
         :n_layers: number of layers

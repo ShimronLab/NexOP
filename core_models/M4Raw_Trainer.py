@@ -133,17 +133,17 @@ params.epoch = 31
 train_loader = create_data_loaders(params)
 
 # %%
-#single_MoDL = UnrolledModel(params).to(device)
-from modl import MoDL
+
+from NexMaskOpt.NexOP.core_models.ReconModule import ReconModule
 if model_type == 'Poisson' and nex_number == 3:
-    recon_model = MoDL(n_layers=params.num_cnn_layers,k_iters=params.num_steps, input_model='Poisson3').to(device)
+    recon_model = ReconModule(n_layers=params.num_cnn_layers,k_iters=params.num_steps, input_model='Poisson3').to(device)
 elif model_type == 'LOUPE' and nex_number == 3:
-    recon_model = MoDL(n_layers=params.num_cnn_layers,k_iters=params.num_steps, input_model='LOUPE3').to(device)
+    recon_model = ReconModule(n_layers=params.num_cnn_layers,k_iters=params.num_steps, input_model='LOUPE3').to(device)
 elif model_type == 'LOUPE' and nex_number == 2:
-    recon_model = MoDL(n_layers=params.num_cnn_layers,k_iters=params.num_steps, input_model='LOUPE2').to(device)
+    recon_model = ReconModule(n_layers=params.num_cnn_layers,k_iters=params.num_steps, input_model='LOUPE2').to(device)
 else:
     print("Using model type:", model_type)
-    recon_model = MoDL(n_layers=params.num_cnn_layers,k_iters=params.num_steps, input_model=model_type).to(device)
+    recon_model = ReconModule(n_layers=params.num_cnn_layers,k_iters=params.num_steps, input_model=model_type).to(device)
 
 ##### NexOP Code #####
 if model_type == 'NexOP':
@@ -523,7 +523,7 @@ for epoch in range(params.epoch):
             with torch.no_grad():
                 b = DEBUG_IDX if DEBUG_IDX < reps.size(0) else 0
 
-                # Input magnitude (MoDL input is [B,2,H,W]; convert to complex-last first)
+                # Input magnitude (ReconModule input is [B,2,H,W]; convert to complex-last first)
                 if model_type == 'NexOP' or (model_type == 'Poisson' and nex_number == 3) or (model_type == 'LOUPE' and nex_number == 3):
                     inp_avergae = (fastmri.complex_abs(image_sampled[b,0:2].permute(1,2,0)) + fastmri.complex_abs(image_sampled[b,2:4].permute(1,2,0)) + fastmri.complex_abs(image_sampled[b,4:6].permute(1,2,0))) / 3
                     inp_mag  = inp_avergae.detach()
@@ -542,7 +542,7 @@ for epoch in range(params.epoch):
                 csm_phase = torch.angle(csm_complex)
                 in_phase = torch.angle(torch.view_as_complex(image_sampled[b,0:2].permute(1,2,0).clone().detach()))
                 fig, axs = plt.subplots(1, 9, figsize=(12, 4))
-                titles = ['Input to MoDL', 'MoDL Output', 'Target', 'Mask1', 'Mask2', 'Mask3]', 'CSM Magnitude', 'CSM Phase', 'In phase']
+                titles = ['Input to ReconModule', 'ReconModule Output', 'Target', 'Mask1', 'Mask2', 'Mask3]', 'CSM Magnitude', 'CSM Phase', 'In phase']
                 for ax, img, title in zip(axs, [inp_mag, out_mag, tgt_mag, masks[0,0,0, ..., 0], masks[0,1,0, ..., 0], masks[0,2,0, ..., 0,], CSM[b,3,:,:], csm_phase, in_phase], titles):
                     ax.imshow(img.cpu().numpy(), cmap='gray')
                     cbar = fig.colorbar(ax.images[-1], ax=ax, fraction=0.046, pad=0.04)
@@ -580,7 +580,7 @@ for epoch in range(params.epoch):
                     if len(some_params) >= 5:
                         break
             print("  • Example trainable params:", some_params)
-            print("  • HINT: Look inside MoDL.forward for any `.detach()`, `.data`, `with torch.no_grad():`, or NumPy ops that would break autograd.")
+            print("  • HINT: Look inside ReconModule.forward for any `.detach()`, `.data`, `with torch.no_grad():`, or NumPy ops that would break autograd.")
         loss = criterion(final_recon,target_single_coil)
         optimizer.zero_grad()
         #k=l
