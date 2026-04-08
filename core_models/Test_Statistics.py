@@ -10,11 +10,10 @@ from scipy.ndimage import binary_fill_holes
 import scipy.ndimage
 import h5py
 from torch.nn import functional as F
-import torch.nn as nn
 from torch.utils.data import DataLoader
 import fastmri
 from M4RawDataset import M4RawDataset
-from modl import MoDL
+from NexMaskOpt.NexOP.core_models.ReconModule import ReconModule
 # import custom libraries
 from utils import transforms as T
 from utils import complex_utils as cplx
@@ -200,7 +199,7 @@ elif model == 'Poisson':
 else:
     in_model = model
 
-recon_model = MoDL(n_layers=params.num_cnn_layers,k_iters=params.num_steps, input_model=in_model).to(device)
+recon_model = ReconModule(n_layers=params.num_cnn_layers,k_iters=params.num_steps, input_model=in_model).to(device)
 if r==1.66:
     r_name = '166'
 else:

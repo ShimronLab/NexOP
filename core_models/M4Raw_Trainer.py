@@ -134,7 +134,7 @@ train_loader = create_data_loaders(params)
 
 # %%
 
-from NexMaskOpt.NexOP.core_models.ReconModule import ReconModule
+from core_models.ReconModule import ReconModule
 if model_type == 'Poisson' and nex_number == 3:
     recon_model = ReconModule(n_layers=params.num_cnn_layers,k_iters=params.num_steps, input_model='Poisson3').to(device)
 elif model_type == 'LOUPE' and nex_number == 3:
@@ -235,8 +235,6 @@ if args.loss == 'L2' and scan_type == 'T1':
         divider = 3
         divider_modl = 1.5
     if r == 2 and model_type == "LOUPE" and nex_number == 2:
-        divider = 2
-        divider_modl = 1
         divider = 3
         divider_modl = 1.5
         
@@ -256,14 +254,10 @@ if args.loss == 'L2' and scan_type == 'T1':
         divider_modl = 1
     if r == 2 and model_type == "LOUPE" and nex_number == 3:
         divider = 2
-        divider_modl = 2
-        divider = 2
         divider_modl = 1
         max_val = 0.1
 
     if r == 3 and model_type == "LOUPE" and nex_number == 3:
-        divider = 2
-        divider_modl = 2
         divider = 3
         divider_modl = 1
         max_val = 0.1
@@ -308,8 +302,6 @@ if args.loss == 'L2' and scan_type == 'T2':
         divider = 3
         divider_modl = 1
     if r == 2 and model_type == "NexOP":
-        divider = 1.5
-        divider_modl = 0.5
         divider = 4
         divider_modl = 1
     if r == 3 and model_type == "NexOP":
