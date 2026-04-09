@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# compare_models.py
 
 import os
 import argparse
@@ -10,11 +8,9 @@ import sigpy as sp
 import sigpy.mri as mr
 import fastmri
 from fastmri.data import transforms as Tf
-from torch.nn import functional as F
 from utils.transforms import coils_sampling, sense_combine_slice
 import matplotlib.pyplot as plt
-from Plot_Probs import plot_prob_maps
-
+import scipy.ndimage as ndimage
 import faulthandler
 from M4RawDataset import recenter_via_demod
 faulthandler.enable()
@@ -30,12 +26,15 @@ torch.serialization.add_safe_globals({'Namespace': Namespace})
 
 # New imports
 from NexOP_model import NexOP
-from modl import MoDL
+from ReconModule import ReconModule
 from utils import complex_utils as cplx, transforms as T
 
 device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 eps = 1e-6
 
+
+# example usage:
+# python3 Compare_M4Raw.py --slice 10 --r 1.66 --dir_out ./assets --type T1 
 
 def load_ckpt(path):
     try:
@@ -134,7 +133,7 @@ def run_unrolled(image_sampled, csm, mask_t, recon_ckpt, input_model):
         ck = torch.load(recon_ckpt, map_location=device, weights_only=True)
     params = ck["params"]
     model_dict = ck["model"]
-    model = MoDL(n_layers=params.num_cnn_layers,k_iters=params.num_steps, input_model=input_model).to(device)
+    model = ReconModule(n_layers=params.num_cnn_layers,k_iters=params.num_steps, input_model=input_model).to(device)
     model.load_state_dict(model_dict)
     model.eval()
     with torch.no_grad():
@@ -261,6 +260,25 @@ def make_jnop(reps, csm, r, ckpt_mask,r_str):
                  num_acs_lines=20, init_method='random', device=device).to(device)
     layer.load_state_dict(model_dict)
     tau = 0.5
+
+    # --- ADDED CODE START ---
+    raw_masks = layer(tau).detach().cpu() # Shape: [3, 256, 195]
+    matrix_size = 256 * 195 *3 
+    
+    print("\n" + "="*40)
+    print(f"[NexOP] Acceleration Factors (Target R={r})")
+    print("="*40)
+    for i in range(raw_masks.shape[0]):
+        mask_sum = raw_masks[i].sum().item()
+        # Prevent division by zero just in case
+        sampling_portion = mask_sum / matrix_size 
+        print(f"Repetition {i+1}: Mask Sum = {mask_sum:.1f} | Sampling Portion = {sampling_portion:.3f} | Total samples = {matrix_size} | Effective R = {1/sampling_portion:.2f}")
+    print("="*40 + "\n")
+    
+    # Now expand M as you were doing originally
+    # M = raw_masks.unsqueeze(0).unsqueeze(-1).expand(1, 3, 256, 195, 2)
+    # --- ADDED CODE END ---
+
     M = layer(tau).detach().cpu().unsqueeze(-0).unsqueeze(-1).expand(1,3, 256, 195,2) # [3,H,W]
     print(f"[DEBUG] M shape: {M.shape}")
     Mbig = M[0,:,...,-1]
@@ -272,6 +290,14 @@ def make_jnop(reps, csm, r, ckpt_mask,r_str):
     image_sampled = torch.concat([image_sampled1, image_sampled2, image_sampled3], dim=-1)
     image_sampled = image_sampled.permute(0,3,1,2)  # [B,6,H,W]
     prob_map = layer.get_prob_masks().detach().cpu()
+
+
+    # Add this to see the "continuous" acceleration factor
+    continuous_sums = prob_map.sum(dim=[-1, -2]) 
+    for i, c_sum in enumerate(continuous_sums):
+        expected_accel = (256 * 195) / c_sum.item()
+        sampling_portion = c_sum.item() / matrix_size
+        print(f"Rep {i+1}- Prob Map Sum: {c_sum.item():.1f} | Sampling Portion: {sampling_portion:.3f}")
 
     return image_sampled, mask, count, prob_map
 
@@ -297,7 +323,7 @@ if __name__ == "__main__":
         r_str = str(int(args.r)) if args.r == int(args.r) else str(args.r)
     save_dir = args.dir_out
     reps, target, csm = load_and_preprocess(args.slice)
-    print(f'TTTTTTTarget size: {target.shape}')
+    print(f'Target size: {target.shape}')
     single_coil_input_rep1 = sense_combine_slice(target[0,...].unsqueeze(0), csm)
     single_coil_input_rep2 = sense_combine_slice(target[1,...].unsqueeze(0), csm)
     single_coil_input_rep3 = sense_combine_slice(target[2,...].unsqueeze(0), csm)
@@ -434,38 +460,15 @@ if __name__ == "__main__":
 
         recon_images.append((name, final_recon))
 
-    # pad to 256×256 and concatenate
-    import numpy as np
 
     imgs = []
     # process reconstructed images
     for name, im in recon_images:
         print(f"[DEBUG] Processing image for {name}: shape={im.shape}")
-        """
-        kspace = fastmri.fft2c(im)
-        # convert to numpy, pad, and convert back to tensor
-        arr = kspace.cpu().numpy()
-        H, W, _ = arr.shape
-        pad_left = (256 - W) // 2
-        pad_right = 256 - W - pad_left
-        im_p = T.ifft2(F.pad(kspace , (0, 0, pad_left, pad_right),  mode='constant', value=0))
-        im_np = np.abs(cplx.to_numpy(im_p.cpu()))
-        """
         im_np = im.cpu().numpy()
         imgs.append(im_np)
 
     # process target image
-    """
-    kspace_t = fastmri.fft2c(target)
-    arr_t = kspace_t.cpu().numpy()
-    Ht, Wt, _ = arr_t.shape
-    pad_left = (256 - Wt) // 2
-    pad_right = 256 - Wt - pad_left
-    arr_t_p = np.pad(arr_t, ((0, 0), (pad_left, pad_right), (0, 0)), mode='constant', constant_values=0)
-    kspace_t_p = torch.from_numpy(arr_t_p).to(kspace_t.device)
-    im_t = fastmri.ifft2c(kspace_t_p)
-    im_t_np = fastmri.complex_abs(im_t).cpu().numpy()
-    """
     im_t_np = target_mag
     imgs.append(im_t_np)
 
@@ -518,15 +521,30 @@ print("Recon max/min:", imgs[1].max().item(), imgs[1].min().item())
 print("Target max/min:", target_mag.max().item(), target_mag.min().item())
 print("Mask shape:", mask.shape)
 
+
+# ==========================================
 # plot folded-half masks (sum conjugate-symmetric halves)
+# ==========================================
 folded_imgs = []
-method_names = []
-for name, ks, mask, _, NexMap, _, _ in jobs:
-    name, ks, mask, recon_ckpt,_, csm, input_model
+plot_labels = [] # To hold the multi-line text for the plot
+
+print("\n" + "="*65)
+print(f"{'Method':<15} | {'Total Samples':<15} | {'Effective R':<15}")
+print("="*65)
+
+matrix_size = 256 * 195
+
+for name, ks, mask, recon_ckpt, NexMap, csm, input_model in jobs:
     print(f"[DEBUG] Processing mask for {name}: shape={NexMap.shape}")
+    
+    # Calculate the exact total samples across all repetitions for this method
+    total_samples = NexMap.sum().item()
+    effective_r = matrix_size / total_samples if total_samples > 0 else 0.0
+    
+    # Print a clean row in the terminal
+    print(f"{name:<15} | {total_samples:<15.1f} | {effective_r:<15.3f}")
+    
     count_np = NexMap.cpu().numpy()
-    #count_np = mask[..., 0].cpu().numpy()  # use the mask directly
-    #folded = fold_and_sum_halves(count_np)
     folded = count_np
     Hm, Wm = folded.shape
     pad_left = (256 - Wm) // 2
@@ -534,24 +552,29 @@ for name, ks, mask, _, NexMap, _, _ in jobs:
     folded_p = np.pad(folded, ((0, 0), (pad_left, pad_right)), mode='constant', constant_values=0)
     
     folded_imgs.append(folded_p)
-    method_names.append(name)
+    
+    # Create a clean multi-line label to print directly above the plot segment
+    plot_labels.append(f"{name}\nSpls: {int(total_samples)}\nEff R: {effective_r:.2f}")
+
+print("="*65 + "\n")
 
 # concatenate folded masks horizontally
 fold_concat = np.concatenate(folded_imgs, axis=1)
 
 # display and save folded mask montage
-fig_m, ax_m = plt.subplots(figsize=(4 * len(folded_imgs), 4))
+# Increased the figure height slightly (from 4 to 5) to fit the new multi-line text
+fig_m, ax_m = plt.subplots(figsize=(4 * len(folded_imgs), 5)) 
 im = ax_m.imshow(fold_concat, cmap='viridis', vmin=0, vmax=fold_concat.max(), interpolation='nearest')
 ax_m.axis('off')
-for idx, label in enumerate(method_names):
-    x = (idx + 0.5) / len(method_names)
-    ax_m.text(x, 1.02, label, ha='center', va='bottom', transform=ax_m.transAxes)
-fig_m.colorbar(im, ax=ax_m, label='Total samples (after folding)')
+
+for idx, label in enumerate(plot_labels):
+    x = (idx + 0.5) / len(plot_labels)
+    # Added multi-line text support, keeping it centered
+    ax_m.text(x, 1.02, label, ha='center', va='bottom', transform=ax_m.transAxes, fontsize=11)
+    
+fig_m.colorbar(im, ax=ax_m, label='Total samples (across all reps)', ticks=[0, 1, 2, 3])
 plt.tight_layout()
 plt.savefig(os.path.join(save_dir, f'Masks_Slice{args.slice}_r{r_str}.png'), dpi=300)
-
-
-
 
 # Save the probability maps figure
 print(f"[DEBUG] Plotting probability maps")
@@ -629,3 +652,91 @@ cbar = fig.colorbar(im,
 plt.tight_layout()
 output_path = os.path.join(save_dir, f'Probability_Maps_Slice{args.slice}_r{r_str}.png')
 plt.savefig(output_path, dpi=900)
+
+
+# ==========================================
+# Smooth Probability Maps 
+# ==========================================
+print("\n" + "="*65)
+print("Generating Smoothed PDFs and Fitting to Asymmetric 2D Gaussian...")
+
+# Define an asymmetric 2D Gaussian function for curve fitting
+def gaussian_2d_asym(coords, a, x0, y0, sigma_x, sigma_y, offset):
+    y, x = coords
+    # Separate sigma_x and sigma_y allow for elliptical fits
+    return a * np.exp(-(((x - x0)**2) / (2 * sigma_x**2) + ((y - y0)**2) / (2 * sigma_y**2))) + offset
+
+k = 10 # Size of the k x k mean filter 
+smooth_maps = []
+fit_stds_x = []
+fit_stds_y = []
+
+for idx, pm in enumerate(prob_maps_np):
+    smooth_pm = ndimage.uniform_filter(pm, size=k)
+    smooth_maps.append(smooth_pm)
+    
+    # 1. Normalize the map so it sums to 1 (making it a true PDF)
+    pdf = smooth_pm / np.sum(smooth_pm)
+    
+    h, w = pdf.shape
+    y, x = np.mgrid[0:h, 0:w]
+    
+    # 2. Calculate Expected Values (Means)
+    # E[X] and E[Y]
+    E_x = np.sum(x * pdf)
+    E_y = np.sum(y * pdf)
+    
+    # 3. Calculate Expected Value of Squares
+    # E[X^2] and E[Y^2]
+    E_x2 = np.sum((x**2) * pdf)
+    E_y2 = np.sum((y**2) * pdf)
+    
+    # 4. Calculate Variance: Var(X) = E[X^2] - (E[X])^2
+    var_x = E_x2 - (E_x**2)
+    var_y = E_y2 - (E_y**2)
+    
+    # 5. True Standard Deviation
+    std_x_val = np.sqrt(var_x)
+    std_y_val = np.sqrt(var_y)
+        
+    fit_stds_x.append(std_x_val)
+    fit_stds_y.append(std_y_val)
+    print(f"{titles[idx]:<15} | True STD X: {std_x_val:.2f} | True STD Y: {std_y_val:.2f}")
+
+# 3. Plotting the smooth maps with headlines
+fig_smooth, axes = plt.subplots(1, len(smooth_maps), figsize=(4 * len(smooth_maps), 6), layout='constrained')
+# Ensure axes is iterable if there's only one map
+if len(smooth_maps) == 1:
+    axes = [axes] 
+
+for ax, smooth_pm, title, std_x, std_y in zip(axes, smooth_maps, titles, fit_stds_x, fit_stds_y):
+    im_s = ax.imshow(smooth_pm, cmap='viridis', vmin=0, vmax=1, interpolation='nearest')
+    ax.axis('off')
+    
+    # Create the headline with method name and both Gaussian stds
+    if np.isnan(std_x) or np.isnan(std_y):
+        headline = f"{title}\nFit Failed"
+    else:
+        headline = f"{title}\nSTD_x: {std_x:.1f} | STD_y: {std_y:.1f}"
+        
+    ax.set_title(headline, fontsize=12, fontweight='bold', pad=15)
+
+
+# Add a single colorbar for the whole figure
+cbar_s = fig_smooth.colorbar(
+    im_s, 
+    ax=axes, 
+    orientation='vertical', 
+    shrink=0.75, 
+    aspect=30, 
+    pad=0.02,
+    fraction=0.05,
+    label='Smooth Probability'
+)
+
+
+output_path_smooth = os.path.join(save_dir, f'Smooth_Probability_Maps_Slice{args.slice}_r{r_str}_type{args.type}.png')
+plt.savefig(output_path_smooth, dpi=900)
+print(f"Saved smoothed maps to: {output_path_smooth}")
+print("="*65 + "\n")
+

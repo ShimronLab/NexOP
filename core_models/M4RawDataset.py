@@ -114,35 +114,21 @@ class M4RawDataset(Dataset):
             csm = csm_all[slice_idx,:,:,:]  # [C, H, W]
             ks_t = cplx.to_tensor(ks[:,:,:])  # [H,W,2]  
             csm_t = cplx.to_tensor(csm[:,:,:])
-            #ks_t = torch.mean(ks_t, dim=0)  # [H,W,2]
+
             #### Assumption of single coil ####
             img_c = fastmri.ifft2c(ks_t)      # [H, W, 2]
 
-            # Magnitude of current repetition
-            #mag = torch.sqrt(img_c[..., 0]**2 + img_c[..., 1]**2)
-            
-            #mag_complex = img_c
             # phase-aligned complex image using first repetition's phase
             rep_imgs.append(img_c)
             csms.append(csm_t)  # [C, H, W]
-            #reps_mgs_abs.append(mag)  # [H, W]
-        
+
         csm = csms[0]  # use first coil sensitivity map
         reps = torch.stack(rep_imgs, dim=0)
         for r in range(0, reps.shape[0]):
             reps[r,...] = recenter_via_demod(reps[r,...].unsqueeze(0))  # [Nrep,C, H, W]\  
-        #reps = recenter_via_demod(reps)
-        
-        #reps_abs = torch.stack(reps_mgs_abs, dim=0)  # [Nrep, H, W]
-        #print(f'target shape: {target.shape}, reps shape: {reps.shape}')
         
         
-        
-        target = (reps[...])#.mean(dim=0) # [C, H, W]
-        #target = reps
-        
-        #target = reps_abs
-        #target = fastmri.complex_abs(target)  # [H, W]
+        target = (reps[...])# [C, H, W]
 
         if self.transform:
             return self.transform(reps, target, csm_t)

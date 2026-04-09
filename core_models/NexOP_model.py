@@ -8,16 +8,13 @@
 import os, sys
 import torch
 from torch import nn
-import math
-import utils.transforms as T
-import sigpy.plot as pl
 import torch.nn.functional as F
 
 
 # Was JNOP
 class NexOP(nn.Module):
     """
-    Joint NEX & sampling Pattern optimization (J-NOP).
+    Joint NEX & sampling Pattern optimization (NexOP).
 
     Learns `num_masks` independent k-space sampling masks for H×W,
     with optional ACS resampling. Enforces a global acceleration factor R

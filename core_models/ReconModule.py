@@ -25,19 +25,7 @@ def compose_pairs_from_mag_phase(mags, phases):
     pairs[:, 0::2, ...] = real           # real_r at even channels
     pairs[:, 1::2, ...] = imag           # imag_r at odd channels
     return pairs
-"""
-def compose_pairs_from_mag_phase(mags, phases):
-    
-    mags, phases: (B, R, H, W)
-    returns:      (B, 2R, H, W) stacked as [real, imag] per repetition
-    
-    real = mags * torch.cos(phases)
-    imag = mags * torch.sin(phases)
-    # interleave [real_r, imag_r] along channel dim
-    pairs = torch.stack([real, imag], dim=2)              # (B, R, 2, H, W)
-    pairs = pairs.flatten(start_dim=1, end_dim=2)         # (B, 2R, H, W)
-    return pairs
-"""
+
 def c2r(complex_img, axis=0):
     """
     :input shape: row x col (complex64)
@@ -196,11 +184,8 @@ class ReconModule(nn.Module):
             input_size = 1
         if input_model == 'NexOP' or input_model == 'Poisson3' or input_model == 'LOUPE3' or input_model == 'LOUPE3avg' or input_model == 'Poisson3avg':
             self.dw = cnn_denoiser(n_layers,3, 64)
-            #self.dw1 = cnn_denoiser(n_layers,input_size, 64)
-            #self.dw2 = cnn_denoiser(n_layers,input_size, 64)
         elif input_model == 'LOUPE2' or input_model == 'LOUPE2avg':
             self.dw = cnn_denoiser(n_layers,2, 64)
-            #self.dw1 = cnn_denoiser(n_layers,input_size, 64) 
         else:
             self.dw = cnn_denoiser(n_layers,input_size, 64)          
         self.dc = data_consistency()
