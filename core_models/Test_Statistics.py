@@ -122,19 +122,19 @@ class DataTransform:
   
         if model == 'Poisson':
             if nex_number == 1:
-                mask2 = sp.mri.poisson((256,195), r, calib=(18,18), dtype=float, crop_corner=False, return_density=False, seed=0, max_attempts=6, tol=0.1)
+                mask2 = sp.mri.poisson((256,195), r, calib=(20,20), dtype=float, crop_corner=False, return_density=False, seed=0, max_attempts=6, tol=0.1)
                 mask2b = np.zeros_like(mask2)
                 mask2c = np.zeros_like(mask2)
                 acs = 20
-                mask2[256//2-acs//2-1:256//2+acs//2+1, 195//2-acs//2-1:195//2+acs//2+1] = 1.0 
+                mask2[256//2-acs//2:256//2+acs//2, 195//2-acs//2:195//2+acs//2] = 1.0 
                 mask_stack = np.stack([mask2, mask2b, mask2c], axis=0)
                 mask_torch = torch.tensor(mask_stack).float()
             elif nex_number == 3:
-                mask2 = sp.mri.poisson((256,195), r*nex_number, calib=(18, 18), dtype=float, crop_corner=False, return_density=False, seed=0, max_attempts=6, tol=0.1)
+                mask2 = sp.mri.poisson((256,195), r*nex_number, calib=(20, 20), dtype=float, crop_corner=False, return_density=False, seed=0, max_attempts=6, tol=0.1)
                 mask2b = sp.mri.poisson((256,195), r*nex_number, calib=(0, 0), dtype=float, crop_corner=False, return_density=False, seed=0, max_attempts=6, tol=0.1)
                 mask2c = sp.mri.poisson((256,195), r*nex_number, calib=(0, 0), dtype=float, crop_corner=False, return_density=False, seed=0, max_attempts=6, tol=0.1)
                 acs = 20
-                mask2[256//2-acs//2-1:256//2+acs//2+1, 195//2-acs//2-1:195//2+acs//2+1] = 1.0 
+                mask2[256//2-acs//2:256//2+acs//2, 195//2-acs//2:195//2+acs//2] = 1.0 
                 mask_stack = np.stack([mask2, mask2b, mask2c], axis=0)
                 mask_torch = torch.tensor(mask_stack).float()
         else:

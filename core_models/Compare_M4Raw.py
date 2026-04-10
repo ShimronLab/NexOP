@@ -157,7 +157,7 @@ def make_poisson(kspace,csm, r, nex):
             tol=0.1
         )
         acs =20
-        m[256//2-acs//2-1:256//2+acs//2 + 1, 195//2-acs//2-1:195//2+acs//2+1] = 1.0 
+        m[256//2-acs//2:256//2+acs//2 , 195//2-acs//2:195//2+acs//2] = 1.0 
         mpad = torch.tensor(m, dtype=torch.float32)
         m1 = torch.zeros_like(mpad)
         m2 = torch.zeros_like(mpad)
@@ -193,7 +193,7 @@ def make_poisson(kspace,csm, r, nex):
                 tol=0.1
             )
             if i == 0:
-                m[256//2-acs//2-1:256//2+acs//2 + 1, 195//2-acs//2-1:195//2+acs//2+1] = 1.0  # center ACS
+                m[256//2-acs//2:256//2+acs//2, 195//2-acs//2:195//2+acs//2] = 1.0  # center ACS
             masks.append(m)
         NexMap = torch.tensor(np.stack(masks, 0), dtype=torch.float32).sum(dim=0)
         M = torch.tensor(np.stack(masks, 0)).float() # [nex,H,W]
