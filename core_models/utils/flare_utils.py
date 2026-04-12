@@ -1,14 +1,8 @@
 #!/usr/bin/env python
-#Borrowed from Jon Tamir Basic 
 import numpy as np
-import sigpy.plot as pl
-from torch.autograd import Variable
 import torch
-# import complex_torch
-import progressbar
-from tqdm import tqdm
 # import torchrecon_utils as recon
-from pytorch_wavelets import DWTForward, DWTInverse
+from pytorch_wavelets import DWTForward
 def roll(im, ix,iy):  
     imx = torch.cat((im[:,-ix:,...], im[:,:-ix,...]),1)
     return torch.cat((imx[:,:,-iy:,...], imx[:,:,:-iy,...]),2)
@@ -16,23 +10,7 @@ def RMSE_im(gt,target):
     n = np.prod(gt.shape)
     return np.sqrt(np.sum((abs(gt-target)**2/n)))/np.sqrt(np.sum((abs(gt)**2/n)))
 
-#torchversion fft
-# def roll(tensor, shift, axis):
-#     if shift == 0:
-#         return tensor
 
-#     if axis < 0:
-#         axis += tensor.dim()
-
-#     dim_size = tensor.size(axis)
-#     after_start = dim_size - shift
-#     if shift < 0:
-#         after_start = -shift
-#         shift = dim_size - abs(shift)
-
-#     before = tensor.narrow(axis, 0, dim_size - shift)
-#     after = tensor.narrow(axis, after_start, shift)
-#     return torch.cat([after, before], axis)
 def torch_fftshift(im):
     t = len(im.shape)
     n = int(np.floor(im.shape[t-3]/2))
@@ -316,21 +294,3 @@ class SenseModel(torch.nn.Module):
             out = out + self.l2lam * x
         return out
 
-def CG_adj(ksp,mps,mask):
-    SenseModel = flare.SenseModel(mps,mask) 
-    adj = SenseModel.adjoint(ksp)
-    return SenseModel,adj
-def CG_adj_3D(ksp,mps,mask):
-    SenseModel = flare.SenseModel_3D(mps,mask) 
-    adj = SenseModel.adjoint(ksp)
-    return SenseModel,adj
-def CG_MoDL_3D(ksp,mps,mask,lam = 0):
-    SenseModel = flare.SenseModel_3D(mps,mask)    
-    adj = SenseModel.adjoint(ksp)
-    CG_alg = flare.ConjGrad(Aop_fun=SenseModel.normal,b=adj,verbose=False,l2lam=lam)
-    return CG_alg.forward(adj)
-def CG_MoDL(ksp,mps,mask,lam = 0):
-    SenseModel = flare.SenseModel(mps,mask)    
-    adj = SenseModel.adjoint(ksp)
-    CG_alg = flare.ConjGrad(Aop_fun=SenseModel.normal,b=adj,verbose=False,l2lam=lam)
-    return CG_alg.forward(adj)
