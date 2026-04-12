@@ -1,6 +1,4 @@
 
-import sys
-import torch
 from torch import nn
 from utils.transforms import center_crop
 
