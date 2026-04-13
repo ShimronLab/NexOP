@@ -17,7 +17,7 @@ NexOP
 │   ├── Compare_M4Raw.py        # Comparison script for different reconstruction models
 │   ├── M4Raw_Trainer.py        # Main training script
 │   ├── M4RawDataset.py         # Data loader implementation
-│   ├── modl.py                 # Unrolled model architecture implementation
+│   ├── ReconModule.py          # Unrolled multi-NEX recon model
 │   ├── Multi_To_Single.py      # ESPIRiT-based data preprocessing
 │   ├── NexOP_model.py          # Core NexOP network architecture
 │   ├── subsample_fastmri.py        
