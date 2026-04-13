@@ -13,7 +13,6 @@ The repository is organized as follows:
 NexOP
 ├── core_models
 │   ├── M4RawData               # Dataset files
-│   ├── unet                    # U-Net components
 │   ├── utils                   # Helper functions 
 │   ├── Compare_M4Raw.py        # Comparison script for different reconstruction models
 │   ├── M4Raw_Trainer.py        # Main training script
