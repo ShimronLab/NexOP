@@ -4,6 +4,8 @@
 
 **Authors:** Tal Oved, Efrat Shimron
 
+[![DOI](https://zenodo.org/badge/1173554603.svg)](https://doi.org/10.5281/zenodo.19588428)
+
 ---
 
 ## Project Structure
