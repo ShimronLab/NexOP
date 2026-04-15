@@ -32,4 +32,4 @@ This project utilizes the M4Raw dataset by [Lyu et al.](https://www.nature.com/a
 ## Checkpoints
 Pre-trained model weights are hosted publicly on Figshare.
 
-[Download](https://doi.org/10.6084/m9.figshare.32008749) Checkpoints 
+[Download](https://doi.org/10.6084/m9.figshare.32008749) Checkpoints. 
