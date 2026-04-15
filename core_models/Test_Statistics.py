@@ -23,8 +23,6 @@ from NexOP_model import NexOP
 from torchmetrics.image.fid import FrechetInceptionDistance
 from skimage.metrics import structural_similarity as ssim
 from PIL import Image
-import lpips
-from torchmetrics.image import VisualInformationFidelity
 import piq
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -257,17 +255,9 @@ def expand_to_rgb(image):
 mse_in_list, mse_out_list = [], []
 psnr_in_list, psnr_out_list = [], []
 ssim_in_list, ssim_out_list = [], []
-lpips_out_list = []
-vif_out_list = []
 fsim_out_list = []
-brisque_out_list = []
 recon_sum, inp_sum, tar_sum_in,  tar_sum_out= torch.zeros((1,3,dim1,dim2)), torch.zeros((1,3,dim1,dim2)), torch.zeros((1,3,dim1,dim2)), torch.zeros((1,3,dim1,dim2))
-lpips_model = lpips.LPIPS(net='alex').to(device)
 
-fid_in = FrechetInceptionDistance(feature=64,normalize=True,input_img_size=(3, dim1, dim2))
-fid_out = FrechetInceptionDistance(feature=64,normalize=True,input_img_size=(3, dim1, dim2))
-vif_metric = VisualInformationFidelity().to(device)
- 
 
 for i in range(1):
     with torch.no_grad():  # Disable gradient computation for evaluation
@@ -422,34 +412,10 @@ for i in range(1):
             input_numpy_norm = input_numpy_norm * area
             out_numpy_norm = out_numpy_norm * area
             
-
-            """
-            ##### Debugging code #####
-            fig, axs = plt.subplots(1, 1, figsize=(5, 5))  # 1 row, 3 columns
-            # Plot each image in a subplot
-            im1 = axs.imshow(area, cmap='gray')
-            plt.show()
-            k=l
-            
-            ##### Debugging code #####
-            fig, axs = plt.subplots(1, 1, figsize=(5, 5))  # 1 row, 3 columns
-            # Plot each image in a subplot
-            concat = np.concatenate((target_numpy, input_numpy, out_numpy), axis=1)
-            im1 = axs.imshow(concat, cmap='gray')
-            plt.show()
-            k=l
-            """
-
             # Save for CMMD calculation
             target_rgb_out = expand_to_rgb(target_numpy_norm_out)
             target_rgb_in = expand_to_rgb(target_numpy_norm_in)
             output_rgb = expand_to_rgb(out_numpy_norm)
-            
-            target_image_pil = Image.fromarray((target_rgb_in * 255).astype(np.uint8))
-            output_image_pil = Image.fromarray((output_rgb * 255).astype(np.uint8))
-            
-            target_image_pil.save(os.path.join(target_dir, f'target_image_{slice}_1.png'))
-            output_image_pil.save(os.path.join(output_dir, f'output_image_{slice}_2.png'))
             
             slice = slice + 1
 
@@ -480,27 +446,10 @@ for i in range(1):
             mse_in = np.mean(np.abs(input_numpy_norm-target_numpy_norm_in)**2)
             mse_out = np.mean(np.abs(out_numpy_norm-target_numpy_norm_out)**2)
 
-            # LpiPS
-            # Compute LPIPS
             # Convert to PyTorch tensors and move to GPU
             target_tensor_out = torch.tensor(target_rgb_out, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0).to(device) * 2 - 1  # Normalize to [-1, 1]
             out_tensor = torch.tensor(output_rgb, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0).to(device) * 2 - 1
 
-            lpips_out = lpips_model(target_tensor_out, out_tensor).item()
-
-            # Store LPIPS values
-            lpips_out_list.append(lpips_out)
-
-            ten_out = torch.tensor(out_numpy_norm).unsqueeze(0).unsqueeze(0)
-            ten_target_out = torch.tensor(target_numpy_norm_out).unsqueeze(0).unsqueeze(0)
-            range_out = ten_target_out.max() - ten_target_out.min()
-            # vif calculation
-            vif_score = vif_metric(ten_out, ten_target_out)
-            vif_out_list.append(vif_score.item())
-
-            #brisque calculation
-            brisque_score = piq.brisque(ten_out, data_range=1., reduction='none')
-            brisque_out_list.append(brisque_score.item())
 
             # FSIM calculation
             fsim_score = piq.fsim(out_tensor+1, target_tensor_out+1, data_range=data_range_out)
@@ -513,13 +462,7 @@ for i in range(1):
             ssim_in_list.append(ssim_in)
             ssim_out_list.append(ssim_out)
 
-# Sum results and create statistics
-fid_in.update(tar_sum_in, real=True)
-fid_out.update(tar_sum_out, real=True)
-fid_out.update(recon_sum, real=False)
-fid_recon = fid_out.compute()
-fid_in.update(inp_sum, real=False)
-fid_inp = fid_in.compute()
+
 
 # Print average metrics
 print(f'Average MSE output: {np.mean(mse_out_list):.4f} ± {np.std(mse_out_list):.4f}')
@@ -527,12 +470,7 @@ print(f'Average PSNR input: {np.mean(psnr_in_list):.4f}')
 print(f'Average PSNR output: {np.mean(psnr_out_list):.4f}± {np.std(psnr_out_list):.4f}')
 print(f'Average SSIM input: {np.mean(ssim_in_list):.4f}')
 print(f'Average SSIM output: {np.mean(ssim_out_list):.4f} ± {np.std(ssim_out_list):.4f}')
-print(f'Average FID input: {fid_inp:.4f}')
-print(f'Average FID output: {fid_recon:.4f}')
-print(f'Average LPIPS output: {np.mean(lpips_out_list):.4f} ± {np.std(lpips_out_list):.4f}')
-print(f'Average VIF output: {np.mean(vif_out_list):.4f} ± {np.std(vif_out_list):.4f}')
 print(f'Average FSIM output: {np.mean(fsim_out_list):.4f} ± {np.std(fsim_out_list):.4f}')
-print(f'Average Brisque output: {np.mean(brisque_out_list):.4f} ± {np.std(brisque_out_list):.4f}')
 print(f'Test slices: {len(test_loader)}')
 
 
