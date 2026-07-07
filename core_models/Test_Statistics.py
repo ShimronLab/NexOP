@@ -424,8 +424,8 @@ for i in range(1):
             data_range_in = max_val_in - min_val_in
             data_range_out = max_val_out - min_val_out
 
-            ssim_in, _ = ssim(target_numpy_norm_in, input_numpy_norm, data_range=data_range_in, full=True)
-            ssim_out, _ = ssim(target_numpy_norm_out, out_numpy_norm, data_range=data_range_out, full=True)
+            ssim_in, _ = ssim(target_numpy_norm_in, input_numpy_norm, data_range=1.0, full=True)
+            ssim_out, _ = ssim(target_numpy_norm_out, out_numpy_norm, data_range=1.0, full=True)
 
             # Calculate PSNR
             psnr_in = T.PSNR_numpy(target_numpy_norm_in, input_numpy_norm)
@@ -452,7 +452,9 @@ for i in range(1):
 
 
             # FSIM calculation
-            fsim_score = piq.fsim(out_tensor+1, target_tensor_out+1, data_range=data_range_out)
+            target_tensor_fsim = torch.tensor(target_numpy_norm_out, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)
+            out_tensor_fsim = torch.tensor(out_numpy_norm, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)
+            fsim_score = piq.fsim(out_tensor_fsim, target_tensor_fsim, data_range=1.0, chromatic=False)
             fsim_out_list.append(fsim_score.item())
             # Append metrics to lists
             mse_in_list.append(mse_in)
