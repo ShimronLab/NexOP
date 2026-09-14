@@ -476,3 +476,32 @@ print(f'Average FSIM output: {np.mean(fsim_out_list):.4f} ± {np.std(fsim_out_li
 print(f'Test slices: {len(test_loader)}')
 
 
+
+
+# ---- Save per-slice metrics for statistical significance testing ----
+# Run this whole notebook once per method (set model / nex_number in the
+# parameters cell) - each run appends one file to ./stat_results/.
+# Pairing across methods relies on shuffle=False in create_data_loaders,
+# so slice i is the same (scan, slice) in every run.
+import pickle
+
+method_tag = 'NexOP' if model == 'NexOP' else f'{model}_{nex_number}NEX'
+
+stats_dir = './stat_results'
+os.makedirs(stats_dir, exist_ok=True)
+
+metrics_per_slice = {
+    'psnr':    np.array(psnr_out_list),
+    'ssim':    np.array(ssim_out_list),
+    'fsim':    np.array(fsim_out_list),
+}
+
+save_path = os.path.join(stats_dir, f'{method_tag}_{contrast}_x{r_name}{version}.pkl')
+with open(save_path, 'wb') as f:
+    pickle.dump(metrics_per_slice, f)
+
+print(f'Saved {len(psnr_out_list)} per-slice metrics for "{method_tag}" -> {save_path}')
+
+
+
+
